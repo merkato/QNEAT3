@@ -23,14 +23,10 @@ from qgis.core import QgsApplication
 
 class Qneat3Plugin:
     def __init__(self, iface):
-        self.provider = None
-
-    def initProcessing(self):
         self.provider = Qneat3Provider()
-        QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
-        self.initProcessing()
+        QgsApplication.processingRegistry().addProvider(self.provider)
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)

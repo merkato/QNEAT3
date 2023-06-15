@@ -31,12 +31,10 @@ __revision__ = '$Format:%H$'
 import os
 from collections import OrderedDict
 
-
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QIcon
 
-from qgis.core import (
-                       QgsWkbTypes,
+from qgis.core import (QgsWkbTypes,
                        QgsFields,
                        QgsField,
                        QgsFeature,
@@ -49,8 +47,7 @@ from qgis.core import (
                        QgsProcessingParameterField,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterString,
-                       QgsProcessingParameterDefinition
-                       )
+                       QgsProcessingParameterDefinition)
 
 from qgis.analysis import (QgsVectorLayerDirector)
 
@@ -80,7 +77,6 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
     DEFAULT_SPEED = 'DEFAULT_SPEED'
     TOLERANCE = 'TOLERANCE'
     OUTPUT = 'OUTPUT'
-    MATRIX_GEOMETRY_TYPE = 'MATRIX_GEOMETRY_TYPE'
 
     def icon(self):
         return QIcon(os.path.join(pluginPath, 'QNEAT3', 'icons', 'icon_matrix.svg'))
@@ -128,10 +124,6 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
                            self.tr('Fastest Path (time optimization)')
                            ]
 
-        self.MATRIX_GEOMETRY_TYPES = [self.tr('Matrix geometry follows straight lines (as the crow flies)'),
-                                    self.tr('Matrix geometry follows routes')
-                                    ]
-
         self.ENTRY_COST_CALCULATION_METHODS = [self.tr('Ellipsoidal'),
                                        self.tr('Planar (only use with projected CRS)')]
             
@@ -168,10 +160,6 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
         params.append(QgsProcessingParameterEnum(self.ENTRY_COST_CALCULATION_METHOD,
                                                  self.tr('Entry Cost calculation method'),
                                                  self.ENTRY_COST_CALCULATION_METHODS,
-                                                 defaultValue=0))
-        params.append(QgsProcessingParameterEnum(self.MATRIX_GEOMETRY_TYPE,
-                                                 self.tr('Generated matrix geometry style'),
-                                                 self.MATRIX_GEOMETRY_TYPES,
                                                  defaultValue=0))
         params.append(QgsProcessingParameterField(self.DIRECTION_FIELD,
                                                   self.tr('Direction field'),
@@ -219,7 +207,6 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
         to_points = self.parameterAsSource(parameters, self.TO_POINT_LAYER, context)
         to_id_field = self.parameterAsString(parameters, self.TO_ID_FIELD, context)
         strategy = self.parameterAsEnum(parameters, self.STRATEGY, context) #int
-        matrix_geometry_type =  self.parameterAsEnum(parameters, self.MATRIX_GEOMETRY_TYPE, context) #int
 
         entry_cost_calc_method = self.parameterAsEnum(parameters, self.ENTRY_COST_CALCULATION_METHOD, context) #int
         directionFieldName = self.parameterAsString(parameters, self.DIRECTION_FIELD, context) #str (empty if no field given)
@@ -277,12 +264,7 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
                 if dijkstra_query[0][query_point.network_vertex_id] == -1:
                     feat['origin_id'] = start_point.point_id
                     feat['destination_id'] = query_point.point_id
-                    feat['entry_cost'] = None
-                    feat['network_cost'] = None
-                    feat['exit_cost'] = None
-                    feat['total_cost'] = None
-                    #Create a null geometry since no real route was found
-                    feat.setGeometry(QgsGeometry())
+                    #do not populate cost field so that it defaults to null
                     sink.addFeature(feat, QgsFeatureSink.FastInsert)
                 else:
                     entry_cost = start_point.entry_cost
@@ -290,28 +272,13 @@ class OdMatrixFromLayersAsLines(QgisAlgorithm):
                     exit_cost = query_point.entry_cost
                     total_cost = network_cost + entry_cost + exit_cost
                     
-                    if matrix_geometry_type != 0:
-                        this_tree=dijkstra_query[0]
-                        idx_start = start_point.network_vertex_id
-                        idx_end = query_point.network_vertex_id
-                        # create a geometry following the complete path
-                        route = [net.network.vertex(idx_end).point(),query_point.point_geom]
-                        # Iterate the graph and add hops to route
-                        while idx_end != idx_start:
-                            idx_end = net.network.edge(this_tree[idx_end]).fromVertex()
-                            route.insert(0, net.network.vertex(idx_end).point())
-                        route.insert(0,start_point.point_geom)
-                    else:
-                        # geometry "as the crow flies"
-                        route = [start_point.point_geom, query_point.point_geom]
-
+                    feat.setGeometry(QgsGeometry.fromPolylineXY([start_point.point_geom, query_point.point_geom]))
                     feat['origin_id'] = start_point.point_id
                     feat['destination_id'] = query_point.point_id
                     feat['entry_cost'] = entry_cost
                     feat['network_cost'] = network_cost
                     feat['exit_cost'] = exit_cost
                     feat['total_cost'] = total_cost
-                    feat.setGeometry(QgsGeometry.fromPolylineXY(route))
                     sink.addFeature(feat, QgsFeatureSink.FastInsert)  
                 current_workstep_number=current_workstep_number+1
                 feedback.setProgress((current_workstep_number/total_workload)*100)

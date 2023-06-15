@@ -172,7 +172,7 @@ class Qneat3Network():
         iso_pointcloud = dict()
 
         for counter, point in enumerate(analysis_point_list):
-            self.feedback.pushInfo("[QNEAT3Network][calcIsoPoints] Processing Point {}".format(counter))
+            self.feedback.pushInfo("[QNEAT3Network][calcIsoPoints] Processing Point {}".format(point.point_id))
             dijkstra_query = self.calcDijkstra(point.network_vertex_id, 0)
             tree = dijkstra_query[0]
             cost = dijkstra_query[1]
@@ -237,7 +237,7 @@ class Qneat3Network():
                             iso_pointcloud.update({fromVertexId: feat})
                         #count up to next vertex
                 i = i + 1 
-                if (i%10000)==0:
+                if (i%100000)==0:
                     self.feedback.pushInfo("[QNEAT3Network][calcIsoPoints] Added {} Nodes to iso pointcloud...".format(i))
                     
         return iso_pointcloud.values() #list of QgsFeature (=QgsFeatureList)
@@ -528,7 +528,7 @@ class Qneat3Network():
         
 class Qneat3AnalysisPoint():
     
-    def __init__(self, layer_name, feature, point_id_field_name, net, vertex_geom, entry_cost_calculation_method, feedback):
+    def __init__(self, layer_name, feature, point_id_field_name, net, vertex_geom, entry_cost_calculation_method, dispatch_cost_field_name, feedback):
         self.layer_name = layer_name
         self.point_feature = feature
         self.point_id = feature[point_id_field_name] 
@@ -538,6 +538,7 @@ class Qneat3AnalysisPoint():
         self.crs = net.AnalysisCrs
         self.strategy = net.strategy_int
         self.entry_speed = net.default_speed
+        self.dispatchcost = feature[dispatch_cost_field_name]
         if entry_cost_calculation_method == 0:
             self.entry_cost = self.calcEntryCostEllipsoidal(feedback)
         elif entry_cost_calculation_method == 1:
@@ -556,7 +557,7 @@ class Qneat3AnalysisPoint():
         else:
             distUnit = self.crs.mapUnits()
             unit_to_meter_factor = QgsUnitTypes.fromUnitToUnitFactor(distUnit, QgsUnitTypes.DistanceMeters)
-            return dist/(self.entry_speed*(unit_to_meter_factor * 1000.0 / 3600.0)) #length/(m/s) todo: Make dynamic
+            return dist/(self.entry_speed*(unit_to_meter_factor * 1000.0 / 3600.0)) + self.dispatchcost #length/(m/s) todo: Make dynamic
     
     def calcEntryCostPlanar(self, feedback):
         dist = self.calcEntryLinestring().length()
@@ -566,7 +567,7 @@ class Qneat3AnalysisPoint():
         else:
             distUnit = self.crs.mapUnits()
             unit_to_meter_factor = QgsUnitTypes.fromUnitToUnitFactor(distUnit, QgsUnitTypes.DistanceMeters)
-            return dist/(self.entry_speed*(unit_to_meter_factor * 1000.0 / 3600.0)) #length/(m/s) todo: Make dynamic
+            return dist/(self.entry_speed*(unit_to_meter_factor * 1000.0 / 3600.0))+ self.dispatchcost #length/(m/s) todo: Make dynamic
 
 
     def calcEntryLinestring(self):

@@ -262,10 +262,7 @@ class OdMatrixFromLayersAsTable(QgisAlgorithm):
                 if dijkstra_query[0][query_point.network_vertex_id] == -1:
                     feat['origin_id'] = start_point.point_id
                     feat['destination_id'] = query_point.point_id
-                    feat['entry_cost'] = None
-                    feat['network_cost'] = None
-                    feat['exit_cost'] = None
-                    feat['total_cost'] = None
+                    #do not populate cost field so that it defaults to null
                     sink.addFeature(feat, QgsFeatureSink.FastInsert)
                 else:
                     network_cost = dijkstra_query[1][query_point.network_vertex_id]

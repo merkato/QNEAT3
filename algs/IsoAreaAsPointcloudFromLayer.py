@@ -73,6 +73,7 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
     SPEED_FIELD = 'SPEED_FIELD'
     DEFAULT_SPEED = 'DEFAULT_SPEED'
     TOLERANCE = 'TOLERANCE'
+    DISPATCHCOST = 'DISPATCH_COST'
     OUTPUT = 'OUTPUT'
 
     def icon(self):
@@ -99,7 +100,7 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
                 "<ul><li>Network Layer</li><li>Startpoint Layer</li><li>Unique Point ID Field (numerical)</li><li>Maximum cost level for Iso-Area</li><li>Cost Strategy</li></ul><br>"\
                 "<b>Parameters (optional):</b><br>"\
                 "There are also a number of <i>optional parameters</i> to implement <b>direction dependent</b> shortest paths and provide information on <b>speeds</b> on the networks edges."\
-                "<ul><li>Direction Field</li><li>Value for forward direction</li><li>Value for backward direction</li><li>Value for both directions</li><li>Default direction</li><li>Speed Field</li><li>Default Speed (affects entry/exit costs)</li><li>Topology tolerance</li></ul><br>"\
+                "<ul><li>Direction Field</li><li>Value for forward direction</li><li>Value for backward direction</li><li>Value for both directions</li><li>Default direction</li><li>Speed Field</li><li>Default Speed (affects entry/exit costs)</li><li>Dispatch cost Field (affects entry/exit costs)</li><li>Topology tolerance</li></ul><br>"\
                 "<b>Output:</b><br>"\
                 "The output of the algorithm is one layer:"\
                 "<ul><li>Point layer of reachable network nodes</li></ul><br>"\
@@ -172,6 +173,11 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
                                                   None,
                                                   self.INPUT,
                                                   optional=True))
+        params.append(QgsProcessingParameterField(self.DISPATCHCOST,
+                                                  self.tr('Dispatched unit readiness'),
+                                                  None,
+                                                  self.START_POINTS,
+                                                  optional=True))        
         params.append(QgsProcessingParameterNumber(self.DEFAULT_SPEED,
                                                    self.tr('Default speed (km/h)'),
                                                    QgsProcessingParameterNumber.Double,
@@ -186,7 +192,7 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
             self.addParameter(p)
         
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
-                                                            self.tr('Output Pointcloud'),
+                                                            self.tr('Cost at node'),
                                                             QgsProcessing.TypeVectorPoint))
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -204,6 +210,7 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
         bothValue = self.parameterAsString(parameters, self.VALUE_BOTH, context) #str
         defaultDirection = self.parameterAsEnum(parameters, self.DEFAULT_DIRECTION, context) #int
         speedFieldName = self.parameterAsString(parameters, self.SPEED_FIELD, context) #str
+        dispatchcost = self.parameterAsString(parameters, self.DISPATCHCOST, context) #str       
         defaultSpeed = self.parameterAsDouble(parameters, self.DEFAULT_SPEED, context) #float
         tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context) #float
 
@@ -215,7 +222,7 @@ class IsoAreaAsPointcloudFromLayer(QgisAlgorithm):
         net = Qneat3Network(network, input_coordinates, strategy, directionFieldName, forwardValue, backwardValue, bothValue, defaultDirection, analysisCrs, speedFieldName, defaultSpeed, tolerance, feedback)
         feedback.setProgress(40)
         
-        list_apoints = [Qneat3AnalysisPoint("from", feature, id_field, net, net.list_tiedPoints[i], entry_cost_calc_method, feedback) for i, feature in enumerate(getFeaturesFromQgsIterable(startPoints))]
+        list_apoints = [Qneat3AnalysisPoint("from", feature, id_field, net, net.list_tiedPoints[i], entry_cost_calc_method, dispatchcost, feedback) for i, feature in enumerate(getFeaturesFromQgsIterable(startPoints))]
         
         fields = QgsFields()
         fields.append(QgsField('vertex_id', QVariant.Int, '', 254, 0))
