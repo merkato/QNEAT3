@@ -86,9 +86,9 @@ def getFieldIndexFromQgsProcessingFeatureSource(feature_source, field_name):
         return -1
     
 def getListOfPoints(qgs_feature_storage): #qgs_feature_storage can be any vectorLayer/QgsProcessingParameterFeatureSource/etc
-    given_geom_type = QgsWkbTypes().displayString(qgs_feature_storage.wkbType()) #GetStringRepresentation of WKB Type
-    expected_geom_type = QgsWkbTypes.displayString(qgs_feature_storage.wkbType()) #Point
-    
+    given_geom_type = qgs_feature_storage.wkbType() #GetStringRepresentation of WKB Type
+    expected_geom_type = QgsWkbTypes().Point
+
     if given_geom_type == expected_geom_type: 
         qgsfeatureiterator = getFeaturesFromQgsIterable(qgs_feature_storage)
         return [f.geometry().asPoint() for f in qgsfeatureiterator]
