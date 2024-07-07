@@ -93,7 +93,7 @@ def getListOfPoints(qgs_feature_storage): #qgs_feature_storage can be any vector
         qgsfeatureiterator = getFeaturesFromQgsIterable(qgs_feature_storage)
         return [f.geometry().asPoint() for f in qgsfeatureiterator]
     else:
-        raise Qneat3GeometryException(given_geom_type, expected_geom_type)
+        raise Qneat3GeometryException(given_geom_type, QgsWkbTypes().Point)
         
 def getFieldDatatype(qgs_feature_storage, fieldname):
     fields_list = qgs_feature_storage.fields()
